@@ -33,6 +33,38 @@ if $IS_LINUX && [[ -f /etc/os-release ]]; then
   unset _os_id _os_like
 fi
 
+# ── Linux 真彩色选择（安装前询问一次）───────────────────────────────────────
+USE_TRUECOLOR=true   # macOS 默认真彩色；Linux 在下方询问后决定
+
+ask_truecolor() {
+  echo
+  echo -e "${BOLD}${CYAN}┌─────────────────────────────────────────────────────────┐${RESET}"
+  echo -e "${BOLD}${CYAN}│           终端颜色模式选择                              │${RESET}"
+  echo -e "${BOLD}${CYAN}└─────────────────────────────────────────────────────────┘${RESET}"
+  echo
+  echo -e "  本配置的提示符有两套配色方案，请根据你的终端能力选择：
+"
+  echo -e "  ${GREEN}${BOLD}[1] 真彩色模式（Truecolor / 24-bit）— 推荐${RESET}"
+  echo -e "      1600 万色，使用 ${BOLD}Snazzy${RESET} 配色（紫黑底，明亮蓝/洋红/青）"
+  echo -e "      ${BOLD}需要终端支持真彩色${RESET}，以下终端均支持："
+  echo -e "        iTerm2 · GNOME Terminal 3.36+ · Alacritty · Kitty · Konsole · Windows Terminal"
+  echo -e "      不支持时颜色会失真（目录色发暗、命令符颜色不对）
+"
+  echo -e "  ${YELLOW}${BOLD}[2] 256 色模式 — 通用兼容${RESET}"
+  echo -e "      使用 ${BOLD}Dracula${RESET} 配色（深紫底，高对比度）"
+  echo -e "        · 粉色提示符 ❯ · 青蓝色目录 · 亮黄 git 信息"
+  echo -e "      适合：老版本终端、基础 SSH 环境、不确定终端类型"
+  echo -e "      无需任何额外配置，开箱即用
+"
+  printf "  请选择 [1/2]（默认 1）: "
+  read -r _choice </dev/tty
+  case "${_choice:-1}" in
+    2) USE_TRUECOLOR=false; info "已选择 256 色 Dracula 方案" ;;
+    *) USE_TRUECOLOR=true;  info "已选择真彩色 Snazzy 方案" ;;
+  esac
+  echo
+}
+
 # ── EPEL 仓库（CentOS/RHEL 系需要，提供最新 zsh / tmux）────────────────────
 ensure_epel() {
   $IS_CENTOS || return 0
@@ -67,6 +99,9 @@ install_pkg() {
 all_exist() {
   for cmd in "$@"; do command -v "$cmd" &>/dev/null || return 1; done
 }
+
+# Linux: 在安装开始前询问真彩色选择
+$IS_LINUX && ask_truecolor
 
 # =============================================================================
 # 1. Homebrew (macOS only)
@@ -239,9 +274,22 @@ sync_file() {
   success "$dst 已写入"
 }
 
-sync_file "$REPO_DIR/config/zshrc"          "$HOME/.zshrc"
-sync_file "$REPO_DIR/config/p10k.zsh"       "$HOME/.p10k.zsh"
-sync_file "$REPO_DIR/config/tmux.conf.local" "$HOME/.tmux.conf.local"
+sync_file "$REPO_DIR/config/zshrc"           "$HOME/.zshrc"
+# 根据真彩色选择复制对应的 p10k 配置
+if $USE_TRUECOLOR; then
+  sync_file "$REPO_DIR/config/p10k.zsh"        "$HOME/.p10k.zsh"
+  info "使用 Snazzy 真彩色配色"
+else
+  sync_file "$REPO_DIR/config/p10k-dracula.zsh" "$HOME/.p10k.zsh"
+  # 在 zshrc 中强制声明 256 色（防止终端误报 truecolor）
+  if ! grep -q 'COLORTERM.*256' "$HOME/.zshrc" 2>/dev/null; then
+    echo '
+# Dracula 256-color mode (set by myshell-init)
+export TERM=xterm-256color' >> "$HOME/.zshrc"
+  fi
+  info "使用 Dracula 256 色配色"
+fi
+sync_file "$REPO_DIR/config/tmux.conf.local"  "$HOME/.tmux.conf.local"
 
 # tmux-help
 mkdir -p "$HOME/.local/bin"
@@ -252,7 +300,9 @@ chmod +x "$HOME/.local/bin/tmux-help"
 # 11. Snazzy 终端配色（Linux 自动尝试，macOS 提示手动导入）
 # =============================================================================
 step "Snazzy 终端配色"
-if $IS_LINUX; then
+if $IS_LINUX && ! $USE_TRUECOLOR; then
+  success "256 色模式无需配置终端配色，跳过"
+elif $IS_LINUX; then
   # 检测是否为 SSH 远程会话
   if [[ -n "${SSH_CLIENT:-}${SSH_TTY:-}${SSH_CONNECTION:-}" ]]; then
     warn "检测到 SSH 会话 — 颜色由【你本地 Mac/Windows 终端】渲染"
@@ -341,11 +391,16 @@ echo -e "  3. 执行 ${CYAN}tmux${RESET} 进入 tmux 会话"
 echo -e "  4. 执行 ${CYAN}tmux-help${RESET} 查看快捷键速查表"
 echo
 if $IS_LINUX; then
-  echo -e "  ${YELLOW}Linux 配色说明：${RESET}"
-  echo -e "  提示符颜色（目录蓝/命令符洋红等）依赖 ${BOLD}Snazzy 深色背景${RESET}才能正确渲染"
-  echo -e "  配色文件位于 ${CYAN}$REPO_DIR/themes/${RESET}"
-  echo -e "  GNOME Terminal → 已自动应用（若检测成功）"
-  echo -e "  Alacritty     → 参考 themes/snazzy-alacritty.toml"
-  echo -e "  Kitty         → 参考 themes/snazzy-kitty.conf"
+  if $USE_TRUECOLOR; then
+    echo -e "  ${YELLOW}Linux 真彩色配色说明：${RESET}"
+    echo -e "  提示符颜色依赖 ${BOLD}Snazzy 深色背景${RESET}才能正确渲染"
+    echo -e "  配色文件位于 ${CYAN}$REPO_DIR/themes/${RESET}"
+    echo -e "  GNOME Terminal → 已自动应用（若检测成功）"
+    echo -e "  Alacritty     → 参考 themes/snazzy-alacritty.toml"
+    echo -e "  Kitty         → 参考 themes/snazzy-kitty.conf"
+  else
+    echo -e "  ${GREEN}Dracula 256 色模式无需额外配置，在任何深色终端下均清晰可读。${RESET}"
+    echo -e "  如需切换为真彩色 Snazzy 方案，重新运行 install.sh 选择 [1] 即可。"
+  fi
 fi
 echo
