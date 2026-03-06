@@ -253,15 +253,69 @@ chmod +x "$HOME/.local/bin/tmux-help"
 # =============================================================================
 step "Snazzy 终端配色"
 if $IS_LINUX; then
-  if command -v gsettings &>/dev/null && \
-     gsettings get org.gnome.Terminal.ProfilesList default &>/dev/null 2>&1; then
+  # 检测是否为 SSH 远程会话
+  if [[ -n "${SSH_CLIENT:-}${SSH_TTY:-}${SSH_CONNECTION:-}" ]]; then
+    warn "检测到 SSH 会话 — 颜色由【你本地 Mac/Windows 终端】渲染"
+    echo -e "  ${YELLOW}请在你的本地终端（iTerm2 等）导入 Snazzy 配色，而不是在服务器上操作。${RESET}"
+    echo -e "  配色文件已在服务器 ${CYAN}$REPO_DIR/themes/${RESET} 目录，可 scp 回本地使用。"
+  # GNOME Terminal
+  elif command -v gsettings &>/dev/null && \
+       gsettings get org.gnome.Terminal.ProfilesList default &>/dev/null 2>&1; then
     info "检测到 GNOME Terminal，自动应用 Snazzy 配色..."
     bash "$REPO_DIR/themes/snazzy-gnome-terminal.sh" && \
       success "Snazzy 已应用到 GNOME Terminal"
+  # Konsole (KDE)
+  elif command -v konsole &>/dev/null; then
+    info "检测到 Konsole，请手动导入配色："
+    KONSOLE_DIR="$HOME/.local/share/konsole"
+    mkdir -p "$KONSOLE_DIR"
+    cp "$REPO_DIR/themes/Snazzy.colorscheme" "$KONSOLE_DIR/Snazzy.colorscheme" 2>/dev/null || true
+    echo -e "  Konsole → Settings → Edit Current Profile → Appearance → Get New Schemes"
+    echo -e "  或直接选择已复制到 ${CYAN}$KONSOLE_DIR/Snazzy.colorscheme${RESET} 的配色"
+  # xfce4-terminal
+  elif command -v xfce4-terminal &>/dev/null; then
+    info "检测到 xfce4-terminal，请手动设置配色："
+    echo -e "  xfce4-terminal → Edit → Preferences → Colors"
+    echo -e "  将前景/背景色等参考 ${CYAN}$REPO_DIR/themes/snazzy-colors.txt${RESET} 手动填入"
+  # Alacritty
+  elif command -v alacritty &>/dev/null; then
+    info "检测到 Alacritty，自动写入配色配置..."
+    ALACRITTY_CONF="$HOME/.config/alacritty/alacritty.toml"
+    if [[ -f "$ALACRITTY_CONF" ]]; then
+      if ! grep -q "snazzy" "$ALACRITTY_CONF"; then
+        echo "" >> "$ALACRITTY_CONF"
+        echo "import = [\"$REPO_DIR/themes/snazzy-alacritty.toml\"]" >> "$ALACRITTY_CONF"
+        success "Snazzy 已写入 $ALACRITTY_CONF"
+      else
+        success "Alacritty 已有 snazzy 配置，跳过"
+      fi
+    else
+      mkdir -p "$(dirname "$ALACRITTY_CONF")"
+      echo "import = [\"$REPO_DIR/themes/snazzy-alacritty.toml\"]" > "$ALACRITTY_CONF"
+      success "Snazzy 已写入 $ALACRITTY_CONF"
+    fi
+  # Kitty
+  elif command -v kitty &>/dev/null; then
+    info "检测到 Kitty，自动写入配色配置..."
+    KITTY_CONF="$HOME/.config/kitty/kitty.conf"
+    if [[ -f "$KITTY_CONF" ]]; then
+      if ! grep -q "snazzy" "$KITTY_CONF"; then
+        echo "" >> "$KITTY_CONF"
+        echo "include $REPO_DIR/themes/snazzy-kitty.conf" >> "$KITTY_CONF"
+        success "Snazzy 已写入 $KITTY_CONF"
+      else
+        success "Kitty 已有 snazzy 配置，跳过"
+      fi
+    else
+      mkdir -p "$(dirname "$KITTY_CONF")"
+      echo "include $REPO_DIR/themes/snazzy-kitty.conf" > "$KITTY_CONF"
+      success "Snazzy 已写入 $KITTY_CONF"
+    fi
   else
-    warn "未检测到 GNOME Terminal，请手动应用配色方案："
-    echo -e "    ${CYAN}Alacritty${RESET}: 在 alacritty.toml 中添加 import = [\"$REPO_DIR/themes/snazzy-alacritty.toml\"]"
-    echo -e "    ${CYAN}Kitty${RESET}    : 在 kitty.conf 中添加 include $REPO_DIR/themes/snazzy-kitty.conf"
+    warn "未能自动识别终端类型，请手动应用配色："
+    echo -e "    ${CYAN}Alacritty${RESET}: import = [\"$REPO_DIR/themes/snazzy-alacritty.toml\"]"
+    echo -e "    ${CYAN}Kitty${RESET}    : include $REPO_DIR/themes/snazzy-kitty.conf"
+    echo -e "    ${CYAN}GNOME Terminal${RESET}: bash $REPO_DIR/themes/snazzy-gnome-terminal.sh"
   fi
 elif $IS_MAC; then
   success "macOS: 请手动导入 iTerm2 配色（见安装完成提示）"

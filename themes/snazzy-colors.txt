@@ -1,0 +1,26 @@
+Snazzy Color Scheme — 颜色值参考
+https://github.com/sindresorhus/iterm2-snazzy
+
+Background  #282a36
+Foreground  #eff0eb
+Cursor      #97979b
+
+ANSI Normal:
+  Black     #282a36
+  Red       #ff5c57
+  Green     #5af78e
+  Yellow    #f3f99d
+  Blue      #57c7ff
+  Magenta   #ff6ac1
+  Cyan      #9aedfe
+  White     #f1f1f0
+
+ANSI Bright:
+  Black     #686868
+  Red       #ff5c57
+  Green     #5af78e
+  Yellow    #f3f99d
+  Blue      #57c7ff
+  Magenta   #ff6ac1
+  Cyan      #9aedfe
+  White     #eff0eb
