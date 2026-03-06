@@ -1,0 +1,52 @@
+# Snazzy color scheme for Alacritty
+# https://github.com/sindresorhus/iterm2-snazzy
+#
+# Usage: merge into your ~/.config/alacritty/alacritty.toml
+# or import via:  import = ["~/myshell-init/themes/snazzy-alacritty.toml"]
+
+[colors.primary]
+background = "#282a36"
+foreground = "#eff0eb"
+
+[colors.cursor]
+text   = "#282a36"
+cursor = "#97979b"
+
+[colors.selection]
+text       = "#eff0eb"
+background = "#41455a"
+
+[colors.normal]
+black   = "#282a36"
+red     = "#ff5c57"
+green   = "#5af78e"
+yellow  = "#f3f99d"
+blue    = "#57c7ff"
+magenta = "#ff6ac1"
+cyan    = "#9aedfe"
+white   = "#f1f1f0"
+
+[colors.bright]
+black   = "#686868"
+red     = "#ff5c57"
+green   = "#5af78e"
+yellow  = "#f3f99d"
+blue    = "#57c7ff"
+magenta = "#ff6ac1"
+cyan    = "#9aedfe"
+white   = "#eff0eb"
+
+[font.normal]
+family = "MesloLGS NF"
+style  = "Regular"
+
+[font.bold]
+family = "MesloLGS NF"
+style  = "Bold"
+
+[font.italic]
+family = "MesloLGS NF"
+style  = "Italic"
+
+[font]
+size = 13.0

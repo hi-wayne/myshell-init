@@ -43,15 +43,42 @@ bash install.sh
 
 ## 安装后步骤
 
+### 配色方案说明
+
+提示符使用的颜色（目录蓝、命令符洋红等）均为 **Snazzy 主题的 hex 真彩色**，需要终端背景色与之匹配才能正确显示。**不导入 Snazzy 配色，颜色会偏暗或发虚。**
+
+配色文件在 `themes/` 目录下，各终端按下方说明导入。
+
 ### macOS / iTerm2
 
-1. 打开 iTerm2 → `Preferences` → `Profiles` → `Text`
-2. 字体改为 **MesloLGS NF**，大小建议 13-14
-3. 如需彻底还原颜色风格，可导入 iTerm2 配色方案（见下方）
+1. 导入 Snazzy 配色（**必须**）：
+   - iTerm2 → `Preferences` → `Profiles` → `Colors` → `Color Presets...` → `Import...`
+   - 选择 `themes/Snazzy.itermcolors`，然后在下拉里选中 `Snazzy`
+2. 设置字体：`Profiles` → `Text` → 字体改为 **MesloLGS NF**，大小 13
 
-### Linux
+### Linux / GNOME Terminal
 
-在终端模拟器（GNOME Terminal / Alacritty / Kitty 等）的字体设置中选择 **MesloLGS NF**。
+install.sh 会自动检测并应用，也可手动执行：
+
+```bash
+bash ~/myshell-init/themes/snazzy-gnome-terminal.sh
+```
+
+### Linux / Alacritty
+
+在 `~/.config/alacritty/alacritty.toml` 中添加：
+
+```toml
+import = ["~/myshell-init/themes/snazzy-alacritty.toml"]
+```
+
+### Linux / Kitty
+
+在 `~/.config/kitty/kitty.conf` 中添加：
+
+```
+include ~/myshell-init/themes/snazzy-kitty.conf
+```
 
 ## 配置文件说明
 

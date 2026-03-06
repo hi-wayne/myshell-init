@@ -249,6 +249,25 @@ sync_file "$REPO_DIR/tmux-help.sh" "$HOME/.local/bin/tmux-help"
 chmod +x "$HOME/.local/bin/tmux-help"
 
 # =============================================================================
+# 11. Snazzy 终端配色（Linux 自动尝试，macOS 提示手动导入）
+# =============================================================================
+step "Snazzy 终端配色"
+if $IS_LINUX; then
+  if command -v gsettings &>/dev/null && \
+     gsettings get org.gnome.Terminal.ProfilesList default &>/dev/null 2>&1; then
+    info "检测到 GNOME Terminal，自动应用 Snazzy 配色..."
+    bash "$REPO_DIR/themes/snazzy-gnome-terminal.sh" && \
+      success "Snazzy 已应用到 GNOME Terminal"
+  else
+    warn "未检测到 GNOME Terminal，请手动应用配色方案："
+    echo -e "    ${CYAN}Alacritty${RESET}: 在 alacritty.toml 中添加 import = [\"$REPO_DIR/themes/snazzy-alacritty.toml\"]"
+    echo -e "    ${CYAN}Kitty${RESET}    : 在 kitty.conf 中添加 include $REPO_DIR/themes/snazzy-kitty.conf"
+  fi
+elif $IS_MAC; then
+  success "macOS: 请手动导入 iTerm2 配色（见安装完成提示）"
+fi
+
+# =============================================================================
 # 完成提示
 # =============================================================================
 echo
@@ -259,14 +278,20 @@ echo
 echo -e "  ${BOLD}后续步骤：${RESET}"
 echo -e "  1. 重启终端或执行 ${CYAN}exec zsh${RESET}"
 if $IS_MAC; then
-  echo -e "  2. 打开 iTerm2 → Preferences → Profiles → Text"
-  echo -e "     字体设置为 ${CYAN}MesloLGS NF${RESET}，大小 13-14"
+  echo -e "  2. iTerm2 配色 → 导入 Snazzy 主题（${RED}必须${RESET}，否则颜色发暗）："
+  echo -e "     iTerm2 → Preferences → Profiles → Colors → Color Presets → Import"
+  echo -e "     选择文件: ${CYAN}$REPO_DIR/themes/Snazzy.itermcolors${RESET}"
+  echo -e "     然后在 Text 标签页将字体设为 ${CYAN}MesloLGS NF 13${RESET}"
 fi
 echo -e "  3. 执行 ${CYAN}tmux${RESET} 进入 tmux 会话"
 echo -e "  4. 执行 ${CYAN}tmux-help${RESET} 查看快捷键速查表"
 echo
-if $IS_MAC; then
-  echo -e "  ${YELLOW}提示：如 iTerm2 字体显示异常，在 Profiles > Text 中"
-  echo -e "  勾选 Use a different font for non-ASCII text 并选 MesloLGS NF${RESET}"
+if $IS_LINUX; then
+  echo -e "  ${YELLOW}Linux 配色说明：${RESET}"
+  echo -e "  提示符颜色（目录蓝/命令符洋红等）依赖 ${BOLD}Snazzy 深色背景${RESET}才能正确渲染"
+  echo -e "  配色文件位于 ${CYAN}$REPO_DIR/themes/${RESET}"
+  echo -e "  GNOME Terminal → 已自动应用（若检测成功）"
+  echo -e "  Alacritty     → 参考 themes/snazzy-alacritty.toml"
+  echo -e "  Kitty         → 参考 themes/snazzy-kitty.conf"
 fi
 echo
