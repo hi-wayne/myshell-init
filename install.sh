@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  myshell-init — 一键初始化 zsh + tmux 环境
-#  支持 macOS (Apple Silicon / Intel) 和 Linux (Debian/Ubuntu/Arch)
+#  支持 macOS (Apple Silicon / Intel) 和 Linux (Debian/Ubuntu/Arch/CentOS/RHEL)
 # =============================================================================
 set -euo pipefail
 
@@ -20,10 +20,31 @@ error()   { echo -e "${RED}[ERR]${RESET}  $*" >&2; }
 step()    { echo -e "\n${BOLD}${CYAN}▶ $*${RESET}"; }
 
 # ── OS 检测 ──────────────────────────────────────────────────────────────────
-IS_MAC=false; IS_LINUX=false; IS_ARM=false
+IS_MAC=false; IS_LINUX=false; IS_ARM=false; IS_CENTOS=false
 [[ "$OS" == "Darwin" ]] && IS_MAC=true
 [[ "$OS" == "Linux"  ]] && IS_LINUX=true
 [[ "$ARCH" == "arm64" || "$ARCH" == "aarch64" ]] && IS_ARM=true
+
+# 检测 CentOS / RHEL / Rocky / AlmaLinux 系
+if $IS_LINUX && [[ -f /etc/os-release ]]; then
+  _os_id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
+  _os_like=$(grep -E '^ID_LIKE=' /etc/os-release | cut -d= -f2 | tr -d '"')
+  case "$_os_id $_os_like" in *centos*|*rhel*|*rocky*|*alma*) IS_CENTOS=true ;; esac
+  unset _os_id _os_like
+fi
+
+# ── EPEL 仓库（CentOS/RHEL 系需要，提供最新 zsh / tmux）────────────────────
+ensure_epel() {
+  $IS_CENTOS || return 0
+  if ! rpm -q epel-release &>/dev/null; then
+    info "安装 EPEL 仓库..."
+    if command -v dnf &>/dev/null; then
+      sudo dnf install -y epel-release
+    else
+      sudo yum install -y epel-release
+    fi
+  fi
+}
 
 # ── 包管理器 ─────────────────────────────────────────────────────────────────
 install_pkg() {
@@ -35,6 +56,8 @@ install_pkg() {
     sudo pacman -S --noconfirm "$@"
   elif command -v dnf &>/dev/null; then
     sudo dnf install -y "$@"
+  elif command -v yum &>/dev/null; then
+    sudo yum install -y "$@"
   else
     error "未知包管理器，请手动安装: $*"; return 1
   fi
@@ -71,9 +94,12 @@ fi
 # 2. 基础工具
 # =============================================================================
 step "基础工具 (git curl wget)"
-if $IS_LINUX && command -v apt-get &>/dev/null; then
+if $IS_LINUX; then
+  ensure_epel   # CentOS/RHEL 系先确保 EPEL 就位
   if ! all_exist git curl wget unzip; then
-    sudo apt-get update -qq
+    if command -v apt-get &>/dev/null; then
+      sudo apt-get update -qq
+    fi
     install_pkg git curl wget unzip
   else
     success "基础工具已存在"
