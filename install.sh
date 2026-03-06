@@ -40,6 +40,11 @@ install_pkg() {
   fi
 }
 
+# 检查命令是否都已存在，全存在则跳过整组安装
+all_exist() {
+  for cmd in "$@"; do command -v "$cmd" &>/dev/null || return 1; done
+}
+
 # =============================================================================
 # 1. Homebrew (macOS only)
 # =============================================================================
@@ -51,7 +56,9 @@ if $IS_MAC; then
     # Apple Silicon 路径
     if $IS_ARM; then
       eval "$(/opt/homebrew/bin/brew shellenv)"
-      echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/.zprofile"
+      local zprofile="$HOME/.zprofile"
+      grep -qF 'brew shellenv' "$zprofile" 2>/dev/null || \
+        echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$zprofile"
     fi
   else
     success "Homebrew 已存在"
@@ -65,8 +72,12 @@ fi
 # =============================================================================
 step "基础工具 (git curl wget)"
 if $IS_LINUX && command -v apt-get &>/dev/null; then
-  sudo apt-get update -qq
-  install_pkg git curl wget unzip
+  if ! all_exist git curl wget unzip; then
+    sudo apt-get update -qq
+    install_pkg git curl wget unzip
+  else
+    success "基础工具已存在"
+  fi
 elif $IS_MAC; then
   command -v git &>/dev/null || install_pkg git
 fi
@@ -184,34 +195,32 @@ fi
 # =============================================================================
 step "复制配置文件"
 
-backup() {
-  local f="$1"
-  [[ -f "$f" && ! -L "$f" ]] && cp "$f" "${f}.bak.$(date +%Y%m%d%H%M%S)" && \
-    info "已备份 $f"
+# 仅在内容不同时才备份并覆盖，避免重复执行产生垃圾备份
+sync_file() {
+  local src="$1" dst="$2"
+  if [[ -L "$dst" ]]; then
+    # 目标是符号链接，直接覆盖（如 .tmux.conf 会是 symlink）
+    cp "$src" "$dst"
+    success "$dst 已更新"
+    return
+  fi
+  if [[ -f "$dst" ]] && diff -q "$src" "$dst" &>/dev/null; then
+    success "$dst 无变化，跳过"
+    return
+  fi
+  [[ -f "$dst" ]] && cp "$dst" "${dst}.bak.$(date +%Y%m%d%H%M%S)" && info "已备份 $dst"
+  cp "$src" "$dst"
+  success "$dst 已写入"
 }
 
-# .zshrc
-backup "$HOME/.zshrc"
-cp "$REPO_DIR/config/zshrc" "$HOME/.zshrc"
-success ".zshrc 已写入"
+sync_file "$REPO_DIR/config/zshrc"          "$HOME/.zshrc"
+sync_file "$REPO_DIR/config/p10k.zsh"       "$HOME/.p10k.zsh"
+sync_file "$REPO_DIR/config/tmux.conf.local" "$HOME/.tmux.conf.local"
 
-# .p10k.zsh
-backup "$HOME/.p10k.zsh"
-cp "$REPO_DIR/config/p10k.zsh" "$HOME/.p10k.zsh"
-success ".p10k.zsh 已写入"
-
-# .tmux.conf.local
-backup "$HOME/.tmux.conf.local"
-cp "$REPO_DIR/config/tmux.conf.local" "$HOME/.tmux.conf.local"
-success ".tmux.conf.local 已写入"
-
-# tmux-help.sh
-cp "$REPO_DIR/tmux-help.sh" "$HOME/.local/bin/tmux-help" 2>/dev/null || {
-  mkdir -p "$HOME/.local/bin"
-  cp "$REPO_DIR/tmux-help.sh" "$HOME/.local/bin/tmux-help"
-}
+# tmux-help
+mkdir -p "$HOME/.local/bin"
+sync_file "$REPO_DIR/tmux-help.sh" "$HOME/.local/bin/tmux-help"
 chmod +x "$HOME/.local/bin/tmux-help"
-success "tmux-help 已安装到 ~/.local/bin/tmux-help"
 
 # =============================================================================
 # 完成提示
